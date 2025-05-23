@@ -153,7 +153,7 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICE
 
 ## Autor
 
-Jean Alves - [jean.alves@parceirosec.com.br](mailto:jean.alves@parceirosec.com.br)
+Michel Bueno Silva - [michelbueno01@gmail.com](mailto:michelbueno01@gmail.comr)
 
 ## Agradecimentos
 

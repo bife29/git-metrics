@@ -1,0 +1,23 @@
+{
+  "configuracao": {
+    "fonte_dados": "power_bi_data\\git_metrics_23-05-2025-19-28_ricardomatheusbeníciorocha.json",
+    "frequencia_atualizacao": "daily",
+    "versao_metricas": "1.0",
+    "caminho_repositorio": "C:\\Projetos\\Baas\\Boleto-Convenio\\payment-billet",
+    "ultima_atualizacao": "2025-05-23T19:28:22.455771"
+  },
+  "metricas_disponiveis": [
+    "commits_por_dia",
+    "commits_por_ambiente",
+    "linhas_alteradas",
+    "atividade_por_autor",
+    "distribuicao_commits"
+  ],
+  "ambientes": {
+    "PRD": [
+      "main",
+      "master"
+    ],
+    "HML": "outros"
+  }
+}

@@ -31,16 +31,11 @@ env/
 *.swp
 *.swo
 
-# Relatórios gerados
-relatorios/
-power_bi_data/
-
-# Logs
+# Project specific
+reports/
+logs/
 *.log
-
-# Local environment
 .env
-.env.local
 
 # Sistema operacional
 .DS_Store

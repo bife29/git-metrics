@@ -1,91 +1,88 @@
-from dataclasses import dataclass
-from typing import List, Optional
-from datetime import datetime
-
+from typing import List, Tuple
 import pandas as pd
+from datetime import datetime
+from domain.entities.author import Author
+from infrastructure.repositories.git_repository import GitRepository
 
-from ...domain.entities.author import Author
-from ...application.interfaces.repository_interface import GitRepositoryInterface
-
-@dataclass
 class CommitStatisticsQuery:
-    """
-    Query para obter estatísticas de commits.
-    Segue o padrão CQS (Command Query Separation).
-    """
-    repository: GitRepositoryInterface
-    authors: Optional[List[Author]] = None
-    since: Optional[datetime] = None
-    until: Optional[datetime] = None
+    def __init__(self, repository: GitRepository, authors: List[Author]):
+        self.repository = repository
+        self.authors = authors
 
-    def execute(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def execute(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
-        Executa a query e retorna as estatísticas dos commits.
+        Executa a query para obter estatísticas de commits.
         
         Returns:
-            tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: 
-                - Estatísticas diárias
-                - Estatísticas mensais
-                - Estatísticas por branch
+            Tuple contendo:
+            - DataFrame com estatísticas diárias
+            - DataFrame com estatísticas mensais
+            - DataFrame com estatísticas por branch
         """
-        commits = self.repository.get_commits(
-            authors=self.authors,
-            since=self.since,
-            until=self.until
-        )
+        # Inicializa as listas para armazenar os dados
+        daily_data = []
+        monthly_data = []
+        branch_data = []
 
-        # Converte commits para DataFrame
-        commits_data = [{
-            'data': commit.date,
-            'nome_autor': commit.author.name,
-            'email_autor': commit.author.email,
-            'branch': commit.branch,
-            'ambiente': commit.environment,
-            'arquivos_alterados': commit.files_changed,
-            'linhas_adicionadas': commit.insertions,
-            'linhas_removidas': commit.deletions,
-            'total_linhas': commit.total_lines,
-            'commit_hash': commit.hash
-        } for commit in commits]
+        for author in self.authors:
+            commits = self.repository.get_commits_by_author(author)
+            
+            # Processa cada commit
+            for commit in commits:
+                date = commit.committed_datetime
+                
+                # Estatísticas do commit
+                stats = {
+                    'autor': str(author),  # Usa str(author) para obter o formato nome <email>
+                    'data': date.date(),
+                    'mes': date.strftime('%Y-%m'),
+                    'arquivos_alterados': len(commit.stats.files),
+                    'linhas_adicionadas': sum(f['insertions'] for f in commit.stats.files.values()),
+                    'linhas_removidas': sum(f['deletions'] for f in commit.stats.files.values()),
+                    'total_linhas': sum(f['lines'] for f in commit.stats.files.values()),
+                    'hash': commit.hexsha[:8],
+                    'mensagem': commit.message.strip(),
+                    'branch': 'main',  # Simplificado para apenas main
+                    'ambiente': 'PRD'   # Simplificado para apenas PRD
+                }
+                
+                daily_data.append({**stats, 'data': stats['data']})
+                monthly_data.append({**stats, 'data': stats['mes']})
+                branch_data.append(stats)
 
-        if not commits_data:
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        # Cria os DataFrames
+        daily_df = pd.DataFrame(daily_data) if daily_data else pd.DataFrame()
+        monthly_df = pd.DataFrame(monthly_data) if monthly_data else pd.DataFrame()
+        branch_df = pd.DataFrame(branch_data) if branch_data else pd.DataFrame()
 
-        df = pd.DataFrame(commits_data)
+        # Agrupa os dados diários
+        if not daily_df.empty:
+            daily_df = daily_df.groupby(['data', 'autor']).agg({
+                'arquivos_alterados': 'sum',
+                'linhas_adicionadas': 'sum',
+                'linhas_removidas': 'sum',
+                'total_linhas': 'sum',
+                'hash': 'count'
+            }).reset_index().rename(columns={'hash': 'total_commits'})
 
-        # Estatísticas diárias
-        daily_stats = df.groupby([df['data'].dt.date, 'email_autor', 'branch', 'ambiente']).agg({
-            'nome_autor': 'first',
-            'arquivos_alterados': 'sum',
-            'linhas_adicionadas': 'sum',
-            'linhas_removidas': 'sum',
-            'total_linhas': 'sum',
-            'commit_hash': 'count'
-        }).reset_index()
-        daily_stats.rename(columns={'commit_hash': 'total_commits'}, inplace=True)
+        # Agrupa os dados mensais
+        if not monthly_df.empty:
+            monthly_df = monthly_df.groupby(['mes', 'autor']).agg({
+                'arquivos_alterados': 'sum',
+                'linhas_adicionadas': 'sum',
+                'linhas_removidas': 'sum',
+                'total_linhas': 'sum',
+                'hash': 'count'
+            }).reset_index().rename(columns={'hash': 'total_commits'})
 
-        # Estatísticas mensais
-        df['mes'] = df['data'].dt.to_period('M')
-        monthly_stats = df.groupby(['mes', 'email_autor', 'branch', 'ambiente']).agg({
-            'nome_autor': 'first',
-            'arquivos_alterados': 'sum',
-            'linhas_adicionadas': 'sum',
-            'linhas_removidas': 'sum',
-            'total_linhas': 'sum',
-            'commit_hash': 'count'
-        }).reset_index()
-        monthly_stats.rename(columns={'commit_hash': 'total_commits'}, inplace=True)
-        monthly_stats['mes'] = monthly_stats['mes'].astype(str)
+        # Agrupa os dados por branch
+        if not branch_df.empty:
+            branch_df = branch_df.groupby(['autor', 'branch', 'ambiente']).agg({
+                'arquivos_alterados': 'sum',
+                'linhas_adicionadas': 'sum',
+                'linhas_removidas': 'sum',
+                'total_linhas': 'sum',
+                'hash': 'count'
+            }).reset_index().rename(columns={'hash': 'total_commits'})
 
-        # Estatísticas por branch
-        branch_stats = df.groupby(['branch', 'ambiente', 'email_autor']).agg({
-            'nome_autor': 'first',
-            'arquivos_alterados': 'sum',
-            'linhas_adicionadas': 'sum',
-            'linhas_removidas': 'sum',
-            'total_linhas': 'sum',
-            'commit_hash': 'count'
-        }).reset_index()
-        branch_stats.rename(columns={'commit_hash': 'total_commits'}, inplace=True)
-
-        return daily_stats, monthly_stats, branch_stats 
+        return daily_df, monthly_df, branch_df 

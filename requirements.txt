@@ -3,4 +3,9 @@ pandas==2.2.1
 typer==0.9.0
 rich==13.7.0
 python-dateutil==2.8.2
-openpyxl==3.1.2 
+openpyxl==3.1.2
+flask==3.0.2
+plotly==5.19.0
+dash==2.15.0
+flask-cors==4.0.0
+werkzeug==3.0.1 

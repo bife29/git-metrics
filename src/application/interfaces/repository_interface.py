@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from datetime import datetime
 
-from ...domain.entities.commit import Commit
-from ...domain.entities.author import Author
+from domain.entities.commit import Commit
+from domain.entities.author import Author
 
 class GitRepositoryInterface(ABC):
     """

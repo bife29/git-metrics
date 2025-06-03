@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-O Git Metrics é estruturado seguindo os princípios de Clean Architecture, SOLID e Command Query Separation (CQS). A arquitetura é dividida em camadas bem definidas, cada uma com sua responsabilidade específica.
+O Git Metrics é construído seguindo os princípios da Clean Architecture e Domain-Driven Design (DDD), oferecendo duas interfaces principais: CLI e Web. A arquitetura é organizada em camadas concêntricas, onde as dependências apontam apenas para dentro, em direção às regras de negócio.
 
 ## Estrutura do Projeto
 
@@ -19,150 +19,252 @@ git-metrics/
 
 ## Camadas da Arquitetura
 
-### 1. Camada de Domínio (Domain Layer)
+### 1. Core (Núcleo)
+- **Domain**: Contém as entidades e regras de negócio fundamentais
+- **Use Cases**: Implementa os casos de uso da aplicação
+- **Interfaces**: Define os contratos para adaptadores externos
 
-A camada mais interna da aplicação, contendo as regras de negócio centrais.
+### 2. Adaptadores
+- **Infrastructure**: Implementações concretas para persistência e serviços externos
+- **Presentation**: Lógica de apresentação comum
+  - **CLI**: Interface de linha de comando
+  - **Web**: Interface web e assets
 
-#### Estrutura:
-```
-domain/
-├── entities/        # Entidades de domínio
-├── enums/          # Enumerações
-└── value_objects/  # Objetos de valor
-```
+### 3. Frameworks e Drivers
+- **External Interfaces**: 
+  - CLI (Command Line Interface)
+  - Web Server (Flask/FastAPI)
+- **Tools**: Git, Excel, etc.
 
-#### Componentes Principais:
-- **Entities**: Classes que representam os objetos principais do domínio
-  - `Author`: Representa um autor de commits
-  - `Commit`: Representa um commit no repositório
+## Interfaces
 
-- **Enums**: Enumerações que definem tipos específicos do domínio
-  - `EnvironmentType`: Define os tipos de ambiente (PRD/HML)
+### Interface CLI
 
-### 2. Camada de Aplicação (Application Layer)
+#### Componentes Principais
+- **CLI Parser**: Processamento de argumentos de linha de comando
+- **Command Handlers**: Execução de comandos específicos
+- **Report Generators**: Geração de relatórios em diferentes formatos
+- **Output Formatters**: Formatação de saída para terminal
 
-Contém a lógica de aplicação e implementa os casos de uso.
+#### Fluxo de Dados
+1. Entrada de comando
+2. Parsing de argumentos
+3. Validação de entrada
+4. Execução do caso de uso
+5. Geração de relatório
+6. Formatação e saída
 
-#### Estrutura:
-```
-application/
-├── commands/      # Comandos (modificam estado)
-├── queries/       # Consultas (apenas leitura)
-└── interfaces/    # Interfaces e contratos
-```
+### Interface Web
 
-#### Padrão CQS (Command Query Separation):
-- **Commands**: Operações que modificam estado
-  - `GenerateExcelReportCommand`: Gera relatório Excel
+#### Componentes Principais
+- **Web Server**: Servidor HTTP para a aplicação web
+- **API Routes**: Endpoints REST para dados
+- **Static Assets**: Arquivos JS, CSS e templates
+- **Chart Components**: Componentes de visualização com sistema de cache
+- **Filter System**: Sistema de filtros sincronizados
+- **Data Manager**: Gerenciamento de estado e cache de dados
+- **WebSocket Server**: Atualizações em tempo real (opcional)
 
-- **Queries**: Operações de leitura
-  - `CommitStatisticsQuery`: Obtém estatísticas de commits
+#### Fluxo de Dados
+1. Requisição HTTP/WebSocket
+2. Roteamento
+3. Processamento do controlador
+4. Execução do caso de uso
+5. Transformação de dados
+6. Cache de resultados
+7. Resposta JSON/HTML
 
-### 3. Camada de Infraestrutura (Infrastructure Layer)
+## Componentes Compartilhados
 
-Implementa as interfaces definidas nas camadas superiores e fornece recursos técnicos.
+### 1. Git Service
+- Abstração para operações Git
+- Implementação independente de interface
+- Cache de dados para performance
+- Sistema de atualização incremental
 
-#### Estrutura:
-```
-infrastructure/
-├── repositories/   # Implementações de repositórios
-└── config/        # Configurações
-```
+### 2. Data Processors
+- Análise de commits
+- Cálculo de métricas
+- Agregação de dados
+- Cache inteligente de resultados
+- Filtros sincronizados
+- Tratamento de dados ausentes
 
-#### Componentes:
-- **Repositories**: Implementações concretas dos repositórios
-  - `GitRepository`: Implementa acesso ao repositório Git
+### 3. Report Engine
+- Templates de relatório
+- Formatação de dados
+- Múltiplos formatos de saída
+- Cache de relatórios
+- Validação de dados
 
-### 4. Camada de Apresentação (Presentation Layer)
+## Padrões de Design
 
-Interface com o usuário e formatação de dados.
+### 1. Command Pattern
+- Encapsulamento de comandos CLI
+- Separação de responsabilidades
+- Facilidade de extensão
 
-#### Estrutura:
-```
-presentation/
-├── cli/           # Interface de linha de comando
-└── console/       # Formatação de saída no console
-```
+### 2. Observer Pattern
+- Atualizações em tempo real
+- Notificações de progresso
+- Eventos assíncronos
 
-## Princípios SOLID Aplicados
+### 3. Factory Pattern
+- Criação de relatórios
+- Instanciação de serviços
+- Configuração de componentes
 
-1. **Single Responsibility (SRP)**
-   - Cada classe tem uma única responsabilidade
-   - Exemplo: `GitRepository` lida apenas com operações Git
-
-2. **Open/Closed (OCP)**
-   - Classes são abertas para extensão, fechadas para modificação
-   - Uso de interfaces permite adicionar novas implementações
-
-3. **Liskov Substitution (LSP)**
-   - Implementações podem substituir suas interfaces
-   - `GitRepository` implementa `GitRepositoryInterface`
-
-4. **Interface Segregation (ISP)**
-   - Interfaces específicas para cada necessidade
-   - Separação entre comandos e consultas
-
-5. **Dependency Inversion (DIP)**
-   - Dependências através de abstrações
-   - Uso de injeção de dependência
-
-## Padrão CQS (Command Query Separation)
-
-### Queries (Consultas)
-- Retornam dados
-- Não modificam estado
-- Exemplo: `CommitStatisticsQuery`
-
-### Commands (Comandos)
-- Executam ações
-- Podem modificar estado
-- Exemplo: `GenerateExcelReportCommand`
+### 4. Strategy Pattern
+- Diferentes formatos de saída
+- Algoritmos de análise
+- Métodos de autenticação
 
 ## Fluxo de Dados
 
-1. **Entrada**
-   - CLI recebe parâmetros
-   - Validação inicial
+```
+[Input] -> [Interface (CLI/Web)] -> [Use Cases] -> [Domain] -> [Infrastructure] -> [Output]
+```
 
-2. **Processamento**
-   - Query obtém dados do repositório
-   - Command gera relatório
+### CLI Flow
+```
+[CLI Arguments] -> [Parser] -> [Command Handler] -> [Use Case] -> [Report Generator] -> [File Output]
+```
 
-3. **Saída**
-   - Geração de relatório Excel
-   - Feedback no console
+### Web Flow
+```
+[HTTP Request] -> [Router] -> [Controller] -> [Use Case] -> [JSON Transformer] -> [HTTP Response]
+```
 
-## Boas Práticas Implementadas
+## Considerações de Performance
 
-1. **Type Hints**
-   - Uso consistente de tipagem
-   - Melhor documentação do código
+### 1. Caching
+- Cache de dados Git
+- Cache de resultados de filtros
+- Cache de gráficos e visualizações
+- Memória de resultados
+- Cache de relatórios
+- Sistema de invalidação inteligente
 
-2. **Documentação**
-   - Docstrings em classes e métodos
-   - Comentários explicativos
+### 2. Processamento Assíncrono
+- Análise em background
+- Atualizações em tempo real
+- Processamento paralelo
+- Filtros otimizados
+- Atualização parcial de dados
 
-3. **Tratamento de Erros**
-   - Exceções específicas
-   - Mensagens claras
+### 3. Otimizações
+- Lazy loading de dados
+- Paginação eficiente
+- Compressão de dados
+- Filtros sincronizados
+- Cache em memória
+- Tratamento de dados ausentes
 
-4. **Clean Code**
-   - Nomes descritivos
-   - Funções pequenas e focadas
-   - Código organizado
+## Segurança
+
+### 1. Autenticação
+- Suporte a múltiplos métodos
+- Integração com Git credentials
+- Tokens de acesso
+
+### 2. Autorização
+- Controle de acesso por recurso
+- Permissões granulares
+- Auditoria de ações
+
+### 3. Dados Sensíveis
+- Criptografia em repouso
+- Comunicação segura
+- Sanitização de entrada
 
 ## Extensibilidade
 
-O projeto foi projetado para ser facilmente extensível:
+### 1. Plugins
+- Sistema de plugins
+- Hooks personalizados
+- Extensões de relatório
+- Filtros customizados
+- Visualizações personalizadas
 
-1. **Novos Relatórios**
-   - Criar novo Command
-   - Implementar geração
+### 2. API
+- REST API documentada
+- WebSocket API
+- Integração com ferramentas
+- Endpoints de filtro
+- Cache control
 
-2. **Novas Análises**
-   - Adicionar nova Query
-   - Implementar lógica
+### 3. Customização
+- Templates personalizados
+- Métricas customizadas
+- Filtros avançados
+- Sistema de cache configurável
+- Tratamento de dados personalizado
 
-3. **Novos Formatos**
-   - Implementar novo Command
-   - Reutilizar queries existentes 
+## Testes
+
+### 1. Testes Unitários
+- Domínio e casos de uso
+- Serviços e adaptadores
+- Componentes isolados
+
+### 2. Testes de Integração
+- Fluxos completos
+- Interfaces externas
+- Banco de dados
+
+### 3. Testes End-to-End
+- CLI workflows
+- Web workflows
+- Cenários reais
+
+## Monitoramento
+
+### 1. Logging
+- Níveis de log
+- Rotação de arquivos
+- Agregação centralizada
+- Monitoramento de cache
+- Logs de filtros
+
+### 2. Métricas
+- Performance de filtros
+- Cache hit/miss ratio
+- Uso de recursos
+- Erros e exceções
+- Tempo de resposta
+
+### 3. Alertas
+- Condições críticas
+- Limites de recursos
+- Falhas de sistema
+- Problemas de cache
+- Erros de filtro
+
+## Deployment
+
+### 1. CLI
+- Distribuição via PyPI
+- Instalação local
+- Containers Docker
+
+### 2. Web
+- Servidor dedicado
+- Container orchestration
+- Cloud deployment
+
+## Documentação
+
+### 1. Código
+- Docstrings
+- Type hints
+- Comentários claros
+
+### 2. API
+- OpenAPI/Swagger
+- Exemplos de uso
+- Postman collections
+
+### 3. Usuário
+- Guias de início
+- Tutoriais
+- FAQ 

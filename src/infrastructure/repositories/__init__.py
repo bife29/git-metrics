@@ -1,1 +1,3 @@
-"""Infrastructure repositories package.""" 
+"""Infrastructure repositories package."""
+
+"""Repository implementations.""" 

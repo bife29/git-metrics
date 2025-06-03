@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from ..entities.author import Author
+from domain.entities.author import Author
 
 @dataclass(frozen=True)
 class Commit:

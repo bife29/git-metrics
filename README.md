@@ -1,26 +1,53 @@
 # Git Metrics
 
-Uma ferramenta poderosa para análise de métricas de repositórios Git, com geração de relatórios em Excel.
+Uma ferramenta poderosa para análise de métricas de repositórios Git, disponível tanto em interface de linha de comando (CLI) quanto em interface web.
 
 ## Descrição
 
-O Git Metrics é uma ferramenta de linha de comando que analisa repositórios Git e gera relatórios detalhados sobre as contribuições dos desenvolvedores. Ele oferece análises por autor, ambiente (PRD/HML), período e branch, apresentando os dados em um formato organizado e fácil de entender.
+O Git Metrics é uma ferramenta versátil que analisa repositórios Git e gera relatórios detalhados sobre as contribuições dos desenvolvedores. Oferece duas interfaces principais:
+
+### Interface CLI
+- Ferramenta de linha de comando para análises rápidas e automação
+- Geração de relatórios em Excel
+- Ideal para integração com scripts e pipelines
+
+### Interface Web
+- Dashboard interativo com gráficos dinâmicos
+- Visualização em tempo real das métricas
+- Filtros interativos sincronizados por autor e período
+- Interface amigável para análise visual dos dados
+- Sistema de cache para melhor performance
 
 ## Funcionalidades
 
+### Funcionalidades Comuns (CLI e Web)
 - Análise de commits por autor
 - Estatísticas diárias e mensais
 - Métricas por ambiente (PRD/HML)
 - Análise de branches
-- Relatórios em Excel com formatação profissional
 - Suporte a múltiplos autores
-- Interface de linha de comando intuitiva
+
+### Funcionalidades Específicas CLI
+- Relatórios em Excel com formatação profissional
+- Exportação de dados em diferentes formatos
+- Integração com ferramentas de linha de comando
+
+### Funcionalidades Específicas Web
+- Gráficos interativos e responsivos
+- Filtros dinâmicos sincronizados por autor e período
+- Visualização em tempo real
+- Dashboard personalizado
+- Exportação de gráficos
+- Sistema de cache inteligente
+- Tratamento avançado de dados vazios
+- Feedback visual aprimorado
 
 ## Requisitos
 
 - Python 3.8 ou superior
 - Git instalado e configurado
 - Acesso ao repositório que deseja analisar
+- Navegador moderno (para interface web)
 
 ## Instalação
 
@@ -44,26 +71,56 @@ pip install -e .
 
 ## Uso
 
-### Comando Básico
+### Interface CLI
 
+#### Comando Básico
 ```bash
 git-metrics --path /caminho/do/repositorio --author email@exemplo.com
 ```
 
-### Análise de Múltiplos Autores
-
+#### Análise de Múltiplos Autores
 ```bash
 git-metrics --path /caminho/do/repositorio --author email1@exemplo.com --author email2@exemplo.com
 ```
 
-### Parâmetros
-
+#### Parâmetros CLI
 - `--path, -p`: Caminho do repositório Git para análise (obrigatório)
 - `--author, -a`: Email do(s) autor(es) para filtrar (opcional, pode ser usado múltiplas vezes)
+- `--format`: Formato de saída (excel, json, csv) - padrão: excel
+- `--output`: Diretório de saída para os relatórios
+
+### Interface Web
+
+#### Iniciando o Servidor
+```bash
+git-metrics-web --port 8000
+```
+
+#### Acessando a Interface
+1. Abra seu navegador
+2. Acesse `http://localhost:8000`
+3. Selecione o repositório para análise
+4. Use os filtros interativos para personalizar a visualização
+
+#### Recursos Web
+- Dashboard principal com visão geral
+- Gráficos interativos de:
+  - Métricas por Autor
+  - Métricas por Ambiente
+  - Totais Diários
+  - Totais Mensais
+- Tabela de autores com detalhes
+- Filtros dinâmicos sincronizados:
+  - Seleção de autor com atualização automática
+  - Filtro de período com validação
+  - Sincronização automática entre filtros
+- Exportação de gráficos e dados
+- Tratamento inteligente de dados ausentes
+- Feedback visual para dados vazios
 
 ## Estrutura dos Relatórios
 
-### Relatório Excel
+### Relatório Excel (CLI)
 
 1. **Aba Resumo Geral**
    - Resumo por Autor e Ambiente (Azul)
@@ -87,6 +144,32 @@ git-metrics --path /caminho/do/repositorio --author email1@exemplo.com --author 
    - Metadados do relatório
    - Detalhes da execução
 
+### Dashboard Web
+
+1. **Visão Geral**
+   - Gráficos interativos com animações suaves
+   - Métricas em tempo real com cache
+   - Filtros dinâmicos sincronizados
+   - Feedback visual aprimorado
+
+2. **Análise por Autor**
+   - Contribuições individuais com histórico detalhado
+   - Comparativo entre autores com métricas precisas
+   - Histórico de commits com filtragem por período
+   - Sincronização automática com outros filtros
+
+3. **Análise por Ambiente**
+   - Distribuição PRD/HML com dados filtrados
+   - Impacto por ambiente com métricas atualizadas
+   - Tendências com base no período selecionado
+   - Visualização clara de dados ausentes
+
+4. **Análise Temporal**
+   - Visão diária e mensal sincronizada
+   - Gráficos de tendência com dados filtrados
+   - Períodos de maior atividade por autor
+   - Tratamento inteligente de períodos sem dados
+
 ## Arquitetura
 
 O projeto segue uma arquitetura limpa e moderna, baseada em:
@@ -108,7 +191,8 @@ git-metrics/
 │   ├── application/     # Lógica de aplicação
 │   ├── domain/         # Entidades e regras de negócio
 │   ├── infrastructure/ # Implementações técnicas
-│   └── presentation/   # Interface com usuário
+│   ├── presentation/   # Interface com usuário
+│   └── web/           # Interface web e assets
 ├── tests/             # Testes
 ├── docs/             # Documentação
 └── requirements/     # Requisitos do projeto
@@ -153,7 +237,7 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICE
 
 ## Autor
 
-Michel Bueno Silva - [michelbueno01@gmail.com](mailto:michelbueno01@gmail.comr)
+Michel Bueno Silva - [michelbueno01@gmail.com](mailto:michelbueno01@gmail.com)
 
 ## Agradecimentos
 

@@ -1,1 +1,5 @@
-"""Infrastructure layer package.""" 
+"""
+Infrastructure module for Git Metrics Analyzer
+"""
+
+"""Infrastructure package.""" 

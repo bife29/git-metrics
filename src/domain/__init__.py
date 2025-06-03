@@ -1,1 +1,1 @@
-"""Domain layer package.""" 
+"""Domain package.""" 

@@ -5,10 +5,10 @@ from typing import List, Optional, Dict
 from git import Repo
 from git.objects.commit import Commit as GitCommit
 
-from ...domain.entities.commit import Commit
-from ...domain.entities.author import Author
-from ...domain.enums.environment_type import EnvironmentType
-from ...application.interfaces.repository_interface import GitRepositoryInterface
+from domain.entities.commit import Commit
+from domain.entities.author import Author
+from domain.enums.environment_type import EnvironmentType
+from application.interfaces.repository_interface import GitRepositoryInterface
 
 class GitRepository(GitRepositoryInterface):
     """
@@ -94,10 +94,17 @@ class GitRepository(GitRepositoryInterface):
             List[Author]: Lista de autores
         """
         authors = {}
-        for commit in self.repo.iter_commits():
-            email = commit.author.email
-            if email not in authors:
-                authors[email] = self._get_or_create_author(commit)
+        # Itera por todas as branches para encontrar todos os autores
+        for branch in self.get_branches():
+            try:
+                for commit in self.repo.iter_commits(branch):
+                    email = commit.author.email
+                    if email not in authors:
+                        authors[email] = self._get_or_create_author(commit)
+            except Exception as e:
+                print(f"Aviso: Não foi possível analisar a branch {branch} para autores: {str(e)}")
+                continue
+        
         return list(authors.values())
 
     def get_recent_author(self) -> Author:
@@ -154,4 +161,25 @@ class GitRepository(GitRepositoryInterface):
             insertions=stats['insertions'],
             deletions=stats['deletions'],
             message=git_commit.message.strip()
-        ) 
+        )
+
+    def get_commits_by_author(self, author: Author) -> List[GitCommit]:
+        """
+        Retorna todos os commits feitos por um autor específico.
+        
+        Args:
+            author: Objeto Author
+            
+        Returns:
+            List[GitCommit]: Lista de commits do autor
+        """
+        commits = []
+        for branch in self.get_branches():
+            try:
+                for commit in self.repo.iter_commits(branch):
+                    if commit.author.email == author.email:
+                        commits.append(commit)
+            except Exception as e:
+                print(f"Aviso: Não foi possível analisar a branch {branch}: {str(e)}")
+                continue
+        return commits 

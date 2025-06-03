@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Metrics Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #1F4E78;
+            --secondary-color: #f8f9fa;
+            --border-radius: 8px;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+        }
+        
+        body {
+            background-color: var(--secondary-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: var(--spacing-md) auto;
+            padding: 0 var(--spacing-md);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            margin-bottom: 0.5rem;
+            background: white;
+        }
+        
+        .card-body {
+            padding: 0.5rem;
+            position: relative;
+            min-height: 450px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Container dos gráficos */
+        .chart-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 380px !important;
+            margin: 0;
+            order: 2;
+        }
+        
+        .form-control, .form-select {
+            border-radius: var(--border-radius);
+            border: 1px solid #dee2e6;
+            padding: var(--spacing-sm);
+            height: 38px;
+        }
+        
+        .btn {
+            border-radius: var(--border-radius);
+            padding: var(--spacing-sm) var(--spacing-md);
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #163857;
+            border-color: #163857;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: var(--spacing-md) 0;
+        }
+        
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            color: var(--primary-color);
+        }
+        
+        #authorsList {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+        }
+        
+        .author-tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #e9ecef;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .author-tag:hover {
+            background-color: #dee2e6;
+        }
+        
+        .author-email {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        .remove-author {
+            color: #dc3545;
+            opacity: 0.7;
+            transition: all 0.2s;
+            padding: 0;
+            margin-left: var(--spacing-sm);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+        
+        .remove-author:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        
+        #results {
+            display: none;
+        }
+        
+        /* Cabeçalho dos gráficos */
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 0.6rem;
+            background: linear-gradient(to right, #f8f9fa, #ffffff);
+            border-radius: 4px;
+            margin-bottom: 0.4rem;
+            min-height: 36px;
+        }
+        
+        .chart-header h6 {
+            margin: 0;
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        /* Filtros */
+        .date-filter {
+            margin: 0.3rem 0;
+            padding: 0.3rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            gap: 0.3rem;
+            align-items: center;
+            font-size: 0.8rem;
+            flex-wrap: nowrap;
+            height: 32px;
+            order: 1;
+        }
+        
+        .date-filter input[type="date"] {
+            width: 130px;
+            padding: 0.2rem;
+            height: 26px;
+            font-size: 0.8rem;
+        }
+        
+        .date-filter .btn {
+            padding: 0.2rem 0.4rem;
+            height: 26px;
+            font-size: 0.8rem;
+            line-height: 1;
+        }
+        
+        .author-filter {
+            display: inline-flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 0.2rem 0.5rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            height: 32px;
+        }
+        
+        .author-filter label {
+            margin: 0;
+            margin-right: 0.3rem;
+            font-size: 0.8rem;
+            color: #6c757d;
+            white-space: nowrap;
+        }
+        
+        .form-select, .author-filter select {
+            border: none;
+            background: transparent;
+            padding: 0.2rem;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            cursor: pointer;
+            outline: none !important;
+            max-width: 160px;
+            height: 26px;
+        }
+        
+        /* Ajustes da tabela */
+        .authors-table .card-body {
+            min-height: auto;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0.3rem;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 0.5rem;
+            }
+            
+            .card-body {
+                padding: 0.4rem;
+                min-height: 380px;
+            }
+            
+            .chart-container {
+                height: 320px !important;
+            }
+            
+            .chart-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.3rem;
+                padding: 0.3rem;
+                min-height: auto;
+            }
+            
+            .author-filter {
+                width: 100%;
+                margin-bottom: 0.3rem;
+            }
+            
+            .date-filter {
+                height: auto;
+                flex-wrap: wrap;
+                padding: 0.3rem;
+            }
+            
+            .date-filter input[type="date"],
+            .form-select,
+            .author-filter select {
+                width: 100%;
+                max-width: none;
+            }
+            
+            #authorsTable {
+                max-height: 150px;
+            }
+            
+            .metrics-filter {
+                flex-direction: column;
+                gap: 0.2rem;
+            }
+            
+            .metric-item {
+                width: 100%;
+                text-align: center;
+                padding: 0.3rem;
+            }
+        }
+        
+        .loading-authors {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .form-control:disabled, .form-select:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+        
+        .btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        
+        .input-group-text {
+            background-color: var(--secondary-color);
+            border-color: #dee2e6;
+        }
+        
+        .author-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: var(--border-radius);
+            padding: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+        }
+        
+        .author-item {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid #f8f9fa;
+            transition: background-color 0.2s;
+        }
+        
+        .author-item:last-child {
+            border-bottom: none;
+        }
+        
+        .author-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .author-item input[type="checkbox"] {
+            margin-right: var(--spacing-sm);
+        }
+        
+        .author-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .author-name {
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+        
+        .author-email {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        
+        .loading-authors {
+            text-align: center;
+            padding: var(--spacing-md);
+            color: #6c757d;
+        }
+        
+        .authors-table {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .authors-table .table {
+            margin-bottom: 0;
+            font-size: 0.85rem;
+        }
+        
+        .authors-table .table th {
+            position: sticky;
+            top: 0;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            padding: 0.4rem;
+            z-index: 1;
+            font-size: 0.9rem;
+        }
+        
+        .authors-table .table td {
+            padding: 0.4rem;
+            vertical-align: middle;
+        }
+        
+        .authors-table .table tbody tr:nth-of-type(odd) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        
+        .metrics-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            padding: 0.3rem;
+            margin-top: 0.3rem;
+            order: 3;
+        }
+        
+        .metric-item {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.4rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #dee2e6;
+            transition: all 0.2s ease;
+        }
+        
+        .metric-item:hover {
+            background: #e9ecef;
+        }
+        
+        .metric-item.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        /* Seção de download */
+        .download-section .card-body {
+            min-height: auto !important;
+            padding: 1rem;
+        }
+        
+        .download-section .form-label {
+            margin-bottom: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="text-center mb-4">Git Metrics Analyzer</h4>
+                
+                <form id="analyzeForm" class="mb-4">
+                    <div class="mb-3">
+                        <label for="repoPath" class="form-label">Caminho do Repositório</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="repoPath" required
+                                   placeholder="Ex: C:/Users/seu-usuario/projetos/seu-repo">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Autores Disponíveis</label>
+                        <div id="authorsList" class="author-list">
+                            <div class="loading-authors">
+                                Selecione um repositório Git válido para ver os autores disponíveis
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100" disabled id="analyzeButton">
+                        <i class="fas fa-chart-line"></i> Analisar Repositório
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="loading">
+            <div class="spinner-border loading-spinner" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-3" id="loadingMessage">Analisando o repositório e gerando relatórios...</p>
+        </div>
+        
+        <div id="results">
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> Análise concluída com sucesso!
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <div class="card download-section">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Download do Relatório</h5>
+                            <div class="row align-items-end">
+                                <div class="col-md-9">
+                                    <label for="downloadPath" class="form-label">Selecione o diretório para salvar</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="downloadPath" 
+                                               placeholder="Ex: C:/Users/seu-usuario/Downloads">
+                                        <button class="btn btn-outline-secondary" type="button" id="selectDir">
+                                            <i class="fas fa-folder-open"></i> Escolher
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <button id="downloadButton" class="btn btn-success w-100">
+                                        <i class="fas fa-file-excel"></i> Baixar Relatório
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card authors-table">
+                        <div class="card-body">
+                            <h6>Autores Analisados</h6>
+                            <div id="authorsTable"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="chart-wrapper">
+                                <div class="chart-header">
+                                    <h6>Métricas por Autor</h6>
+                                    <div class="author-filter">
+                                        <label>Filtrar por Autor:</label>
+                                        <select id="authorFilter" class="form-select">
+                                            <option value="">Todos os Autores</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="authorEnvChart"></canvas>
+                                </div>
+                                <div class="metrics-filter">
+                                    <div class="metric-item active" data-metric="commits" style="background-color: rgba(54, 162, 235, 0.8)">COMMITS</div>
+                                    <div class="metric-item active" data-metric="arquivos" style="background-color: rgba(255, 99, 132, 0.8)">ARQUIVOS</div>
+                                    <div class="metric-item active" data-metric="linhas_adicionadas" style="background-color: rgba(75, 192, 192, 0.8)">LINHAS ADICIONADAS</div>
+                                    <div class="metric-item active" data-metric="linhas_removidas" style="background-color: rgba(255, 159, 64, 0.8)">LINHAS REMOVIDAS</div>
+                                    <div class="metric-item active" data-metric="total_linhas" style="background-color: rgba(153, 102, 255, 0.8)">TOTAL DE LINHAS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="chart-wrapper">
+                                <div class="chart-header">
+                                    <h6>Métricas por Ambiente</h6>
+                                    <div class="author-filter">
+                                        <label>Filtrar por Autor:</label>
+                                        <select id="envAuthorFilter" class="form-select">
+                                            <option value="">Todos os Autores</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="environmentChart"></canvas>
+                                </div>
+                                <div class="metrics-filter">
+                                    <div class="metric-item active" data-metric="commits" style="background-color: rgba(54, 162, 235, 0.8)">COMMITS</div>
+                                    <div class="metric-item active" data-metric="arquivos" style="background-color: rgba(255, 99, 132, 0.8)">ARQUIVOS</div>
+                                    <div class="metric-item active" data-metric="linhas_adicionadas" style="background-color: rgba(75, 192, 192, 0.8)">LINHAS ADICIONADAS</div>
+                                    <div class="metric-item active" data-metric="linhas_removidas" style="background-color: rgba(255, 159, 64, 0.8)">LINHAS REMOVIDAS</div>
+                                    <div class="metric-item active" data-metric="total_linhas" style="background-color: rgba(153, 102, 255, 0.8)">TOTAL DE LINHAS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="chart-wrapper">
+                                <div class="chart-header">
+                                    <h6>Totais Diários</h6>
+                                    <div class="author-filter">
+                                        <label>Filtrar por Autor:</label>
+                                        <select id="dailyAuthorFilter" class="form-select">
+                                            <option value="">Todos os Autores</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="date-filter">
+                                    <span>De:</span>
+                                    <input type="date" class="form-control form-control-sm">
+                                    <span>Até:</span>
+                                    <input type="date" class="form-control form-control-sm">
+                                    <button class="btn btn-primary btn-sm">Aplicar</button>
+                                    <button class="btn btn-outline-secondary btn-sm">Reset</button>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="dailyTotalsChart"></canvas>
+                                </div>
+                                <div class="metrics-filter">
+                                    <div class="metric-item active" data-metric="commits" style="background-color: rgba(54, 162, 235, 0.8)">COMMITS</div>
+                                    <div class="metric-item active" data-metric="arquivos" style="background-color: rgba(255, 99, 132, 0.8)">ARQUIVOS</div>
+                                    <div class="metric-item active" data-metric="linhas_adicionadas" style="background-color: rgba(75, 192, 192, 0.8)">LINHAS ADICIONADAS</div>
+                                    <div class="metric-item active" data-metric="linhas_removidas" style="background-color: rgba(255, 159, 64, 0.8)">LINHAS REMOVIDAS</div>
+                                    <div class="metric-item active" data-metric="total_linhas" style="background-color: rgba(153, 102, 255, 0.8)">TOTAL DE LINHAS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="chart-wrapper">
+                                <div class="chart-header">
+                                    <h6>Totais Mensais</h6>
+                                    <div class="author-filter">
+                                        <label>Filtrar por Autor:</label>
+                                        <select id="monthlyAuthorFilter" class="form-select">
+                                            <option value="">Todos os Autores</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="date-filter">
+                                    <span>De:</span>
+                                    <input type="date" class="form-control form-control-sm">
+                                    <span>Até:</span>
+                                    <input type="date" class="form-control form-control-sm">
+                                    <button class="btn btn-primary btn-sm">Aplicar</button>
+                                    <button class="btn btn-outline-secondary btn-sm">Reset</button>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="monthlyTotalsChart"></canvas>
+                                </div>
+                                <div class="metrics-filter">
+                                    <div class="metric-item active" data-metric="commits" style="background-color: rgba(54, 162, 235, 0.8)">COMMITS</div>
+                                    <div class="metric-item active" data-metric="arquivos" style="background-color: rgba(255, 99, 132, 0.8)">ARQUIVOS</div>
+                                    <div class="metric-item active" data-metric="linhas_adicionadas" style="background-color: rgba(75, 192, 192, 0.8)">LINHAS ADICIONADAS</div>
+                                    <div class="metric-item active" data-metric="linhas_removidas" style="background-color: rgba(255, 159, 64, 0.8)">LINHAS REMOVIDAS</div>
+                                    <div class="metric-item active" data-metric="total_linhas" style="background-color: rgba(153, 102, 255, 0.8)">TOTAL DE LINHAS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script>
+        // Variáveis globais
+        let isAnalyzing = false;
+        let isValidRepo = false;
+        let selectedAuthors = new Set();
+        let currentExcelPath = '';
+
+        // Verifica se o repositório é válido e carrega os autores
+        async function checkRepositoryAndLoadAuthors(repoPath) {
+            try {
+                // Verifica se é um repositório válido
+                const checkResponse = await fetch('/check-repository', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        repository_path: repoPath
+                    })
+                });
+                
+                if (!checkResponse.ok) {
+                    const errorData = await checkResponse.json();
+                    throw new Error(errorData.error || 'Repositório inválido');
+                }
+                
+                // Carrega a lista de autores
+                const authorsResponse = await fetch('/list-authors', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        repository_path: repoPath
+                    })
+                });
+                
+                if (!authorsResponse.ok) {
+                    const errorData = await authorsResponse.json();
+                    throw new Error(errorData.error || 'Erro ao carregar autores');
+                }
+                
+                const data = await authorsResponse.json();
+                return data.authors;
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                throw error;
+            }
+        }
+        
+        // Atualiza a lista de autores na interface
+        function updateAuthorsList(authors) {
+            const authorsList = document.getElementById('authorsList');
+            authorsList.innerHTML = '';
+            
+            if (!authors || authors.length === 0) {
+                authorsList.innerHTML = '<div class="loading-authors">Nenhum autor encontrado no repositório</div>';
+                return;
+            }
+            
+            authors.forEach(author => {
+                const authorItem = document.createElement('div');
+                authorItem.className = 'author-item';
+                authorItem.innerHTML = `
+                    <input type="checkbox" id="author-${author.email}" value="${author.email}">
+                    <div class="author-info">
+                        <span class="author-name">${author.name}</span>
+                        <span class="author-email">${author.email}</span>
+                    </div>
+                `;
+                
+                const checkbox = authorItem.querySelector('input[type="checkbox"]');
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        selectedAuthors.add(author.email);
+                    } else {
+                        selectedAuthors.delete(author.email);
+                    }
+                    document.getElementById('analyzeButton').disabled = selectedAuthors.size === 0;
+                });
+                
+                authorsList.appendChild(authorItem);
+            });
+        }
+        
+        // Adiciona evento para verificar o repositório quando o caminho mudar
+        document.getElementById('repoPath').addEventListener('change', async function() {
+            const repoPath = this.value.trim();
+            const authorsList = document.getElementById('authorsList');
+            const analyzeButton = document.getElementById('analyzeButton');
+            
+            if (!repoPath) {
+                isValidRepo = false;
+                authorsList.innerHTML = '<div class="loading-authors">Selecione um repositório Git válido para ver os autores disponíveis</div>';
+                analyzeButton.disabled = true;
+                return;
+            }
+            
+            authorsList.innerHTML = '<div class="loading-authors"><i class="fas fa-spinner fa-spin"></i> Carregando autores...</div>';
+            
+            try {
+                const authors = await checkRepositoryAndLoadAuthors(repoPath);
+                isValidRepo = true;
+                selectedAuthors.clear();
+                updateAuthorsList(authors);
+                analyzeButton.disabled = true;
+            } catch (error) {
+                isValidRepo = false;
+                authorsList.innerHTML = '<div class="loading-authors">Erro: ' + error.message + '</div>';
+                analyzeButton.disabled = true;
+            }
+        });
+        
+        // Atualiza o evento de submit do formulário
+        document.getElementById('analyzeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (isAnalyzing) {
+                alert('Uma análise já está em andamento. Por favor, aguarde.');
+                return;
+            }
+            
+            const repoPath = document.getElementById('repoPath').value.trim();
+            
+            if (!repoPath) {
+                alert('Por favor, informe o caminho do repositório.');
+                return;
+            }
+            
+            if (!isValidRepo) {
+                alert('Por favor, selecione um repositório Git válido.');
+                return;
+            }
+            
+            if (selectedAuthors.size === 0) {
+                alert('Por favor, selecione pelo menos um autor.');
+                return;
+            }
+            
+            const loading = document.querySelector('.loading');
+            const results = document.getElementById('results');
+            const loadingMessage = document.getElementById('loadingMessage');
+            
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            isAnalyzing = true;
+            
+            try {
+                loadingMessage.textContent = 'Analisando commits do repositório...';
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        repository_path: repoPath,
+                        authors: Array.from(selectedAuthors)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao analisar o repositório');
+                }
+                
+                if (!data.metrics || !data.metrics.resumo_autor_ambiente || data.metrics.resumo_autor_ambiente.length === 0) {
+                    throw new Error('Nenhum commit encontrado para os autores selecionados');
+                }
+                
+                // Armazena o caminho do Excel
+                currentExcelPath = data.excel_path;
+                
+                // Cria os gráficos com os dados recebidos
+                createPlots(data.metrics);
+                
+                loading.style.display = 'none';
+                results.style.display = 'block';
+                
+            } catch (error) {
+                alert('Erro ao analisar o repositório: ' + error.message);
+                loading.style.display = 'none';
+                console.error('Erro detalhado:', error);
+            } finally {
+                isAnalyzing = false;
+                loadingMessage.textContent = 'Analisando o repositório e gerando relatórios...';
+            }
+        });
+
+        document.getElementById('downloadButton').addEventListener('click', async function() {
+            const downloadPath = document.getElementById('downloadPath').value;
+            if (!downloadPath) {
+                alert('Por favor, selecione um diretório para salvar o arquivo.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/save-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        download_path: downloadPath,
+                        excel_path: currentExcelPath
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                alert('Arquivo salvo com sucesso em: ' + data.saved_path);
+                
+            } catch (error) {
+                alert('Erro ao salvar o arquivo: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html> 

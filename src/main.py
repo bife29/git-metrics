@@ -9,6 +9,7 @@ from infrastructure.repositories.git_repository import GitRepository
 from application.queries.get_commit_statistics_query import CommitStatisticsQuery
 from application.commands.generate_excel_report_command import GenerateExcelReportCommand
 from domain.entities.author import Author
+from application.commands.analyze_repository import AnalyzeRepositoryCommand
 
 app = typer.Typer()
 console = Console()
@@ -27,74 +28,72 @@ def validate_path(path: str) -> str:
 
 @app.command()
 def analyze(
-    repo_path: str = typer.Option(..., "--path", "-p", help="Caminho do repositório git para análise"),
-    author_emails: Optional[List[str]] = typer.Option(None, "--author", "-a", help="Filtrar por email(s) do(s) autor(es). Pode ser especificado múltiplas vezes.")
+    path: str = typer.Option(None, "--path", "-p", help="Caminho do repositório Git"),
+    repository_path: str = typer.Argument(None, help="Caminho do repositório Git"),
+    author_emails: Optional[List[str]] = typer.Option(
+        None,
+        "--author",
+        "-a",
+        help="Email do autor para filtrar (pode ser usado múltiplas vezes)"
+    )
 ):
-    """Analisa um repositório git e gera relatórios de contribuição em Excel e Power BI."""
+    """
+    Analisa um repositório git e gera relatórios de contribuição em Excel.
+    
+    Args:
+        path: Caminho do repositório Git (via opção --path)
+        repository_path: Caminho do repositório Git (via argumento posicional)
+        author_emails: Lista de emails dos autores para filtrar
+    """
     try:
-        # Valida o caminho do repositório
+        # Usa --path se fornecido, senão usa o argumento posicional
+        repo_path = path if path else repository_path
+        if not repo_path:
+            console.print("[red]Erro: Caminho do repositório não fornecido. Use --path ou forneça o caminho como argumento.[/red]")
+            raise typer.Exit(1)
+            
+        # Valida o caminho
         repo_path = validate_path(repo_path)
         
         # Inicializa o repositório
         repository = GitRepository(repo_path)
         
-        # Se nenhum autor foi especificado, usa o mais recente
+        # Se não foram especificados autores, usa todos do repositório
         if not author_emails:
-            recent_author = repository.get_recent_author()
-            author_emails = [recent_author.email]
-            console.print(f"[yellow]Nenhum autor especificado. Usando contribuidor mais recente: {recent_author.name} ({recent_author.email})[/yellow]\n")
-        
-        # Obtém os autores
-        authors = []
-        for email in author_emails:
-            # Procura o autor nos commits
-            found = False
-            for commit in repository.repo.iter_commits():
-                if commit.author.email == email:
-                    authors.append(Author(
-                        name=commit.author.name,
-                        email=email
-                    ))
-                    found = True
-                    break
+            authors = repository.get_authors()
+        else:
+            # Filtra apenas os autores especificados
+            all_authors = {author.email: author.name for author in repository.get_authors()}
+            authors = []
             
-            # Se não encontrou, cria com nome desconhecido
-            if not found:
-                authors.append(Author(
-                    name="Desconhecido",
-                    email=email
-                ))
+            for email in author_emails:
+                if email in all_authors:
+                    authors.append(Author(name=all_authors[email], email=email))
+                else:
+                    # Procura por correspondência parcial
+                    found = False
+                    for repo_email, name in all_authors.items():
+                        if email.lower() in repo_email.lower() or email.lower() in name.lower():
+                            authors.append(Author(name=name, email=repo_email))
+                            found = True
+                            break
+                    
+                    if not found:
+                        console.print(f"[yellow]Aviso: Autor '{email}' não encontrado no repositório[/yellow]")
         
-        # Cria a query para obter estatísticas
-        statistics_query = CommitStatisticsQuery(
-            repository=repository,
-            authors=authors
-        )
+        if not authors:
+            console.print("[red]Erro: Nenhum autor válido encontrado[/red]")
+            raise typer.Exit(1)
         
-        # Cria o comando para gerar o relatório Excel
-        excel_command = GenerateExcelReportCommand(
-            statistics_query=statistics_query,
-            output_dir=Path("relatorios"),
-            authors=authors
-        )
+        # Executa a análise
+        command = AnalyzeRepositoryCommand(repository)
+        excel_path = command.execute(authors)
         
-        # Executa o comando e obtém o caminho do arquivo gerado
-        try:
-            excel_file = excel_command.execute()
-            console.print(f"\n[green]Relatório Excel foi salvo como '{excel_file}'[/green]")
-            
-            # Exibe resumo final
-            console.print("\n[bold green]Geração de relatórios concluída:[/bold green]")
-            console.print(f"1. Relatório Excel: {excel_file}")
-            console.print("\n[bold blue]Próximos passos:[/bold blue]")
-            console.print("1. Abra o relatório Excel para análise detalhada")
-            console.print("2. Use os filtros disponíveis para análises específicas")
-            console.print("3. Verifique as diferentes abas para informações detalhadas")
-            
-        except ValueError as e:
-            console.print(f"[red]Nenhum commit encontrado para os autores especificados[/red]")
-            return
-            
+        # Exibe resultado
+        console.print("\n[green]Análise concluída com sucesso![/green]")
+        console.print(f"\nArquivos gerados:")
+        console.print(f"1. Relatório Excel: {excel_path}")
+        
     except Exception as e:
         console.print(f"[red]Erro: {str(e)}[/red]")
         raise typer.Exit(1)
